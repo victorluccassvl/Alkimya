@@ -1,0 +1,5 @@
+Dependencies:
+- SDL2
+	sudo apt-get install libsdl2-dev
+- SDL2 mixer
+	sudo apt-get install libsdl2-mixer-dev
