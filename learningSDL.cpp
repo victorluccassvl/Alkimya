@@ -1,18 +1,18 @@
+#include <glad/glad.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
+
 #include <stdio.h>
 #include <assert.h>
-
-const int SCREEN_WIDTH = 640;
-const int SCREEN_HEIGHT = 480;
 
 #define ERROR -1
 #define FAILED -1
 
 SDL_Window *window = NULL;
-SDL_Surface *window_surface = NULL;
+SDL_GLContext context = NULL;
 bool running = true;
-
+int screen_width = 800;
+int screen_height = 600;
 
 void initializeSDLContext()
 {
@@ -21,35 +21,56 @@ void initializeSDLContext()
 		printf( "SDL could not initialize! SDL_Error: %s\n", SDL_GetError() );
 		assert(false);
 	}
-	else
+
+	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
+	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 3 );
+	SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
+
+	if ( Mix_OpenAudio( 22050, MIX_DEFAULT_FORMAT, 2, 2048 ) == FAILED )
 	{
-		if ( Mix_OpenAudio( 22050, MIX_DEFAULT_FORMAT, 2, 2048 ) == FAILED )
-		{
-			printf( "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError() );
-			assert(false);
-		}
-
-		{
-			const char title[] = "Learning SDL2";
-			int x_pos = SDL_WINDOWPOS_UNDEFINED;
-			int y_pos = SDL_WINDOWPOS_UNDEFINED;
-			int width = SCREEN_WIDTH;
-			int height = SCREEN_HEIGHT;
-			Uint32 flags = SDL_WINDOW_SHOWN;
-
-			window = SDL_CreateWindow( title, x_pos, y_pos, width, height, flags );
-		}
-
-		if ( window == NULL )
-		{
-			printf( "SDL coult not create window! SDL_Error: %s\n", SDL_GetError() );
-			assert(false);
-		}
+		printf( "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError() );
+		assert(false);
 	}
+
+	{
+		const char title[] = "Learning SDL2";
+		int x_pos = SDL_WINDOWPOS_UNDEFINED;
+		int y_pos = SDL_WINDOWPOS_UNDEFINED;
+		int width = screen_width;
+		int height = screen_height;
+		Uint32 flags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
+
+		window = SDL_CreateWindow( title, x_pos, y_pos, width, height, flags );
+	}
+
+	if ( window == NULL )
+	{
+		printf( "SDL coult not create window! SDL_Error: %s\n", SDL_GetError() );
+		assert(false);
+	}
+
+	context = SDL_GL_CreateContext(window);
+
+	if ( context == NULL )
+	{
+		printf( "SDL coult not create GL context! SDL_Error: %s\n", SDL_GetError() );
+		assert(false);
+	}
+
+	if ( ! gladLoadGLLoader( ( GLADloadproc ) SDL_GL_GetProcAddress ) )
+	{
+		printf( "Failed to initialize GLAD\n" );
+		assert(false);
+	}
+
+	glViewport( 0, 0, screen_width, screen_height );
+
+	//SDL_GL_SetSwapInterval(1);
 }
 
 void destroySDLContext()
 {
+	SDL_GL_DeleteContext( context );
 	SDL_DestroyWindow( window );
 	Mix_Quit();
 	SDL_Quit();
@@ -71,6 +92,17 @@ void handleInputEvents()
 			case SDL_WINDOWEVENT:
 			{
 				//event.window.event
+				switch ( event.window.event )
+				{
+					case SDL_WINDOWEVENT_RESIZED:
+					{
+						screen_width = event.window.data1;
+						screen_height = event.window.data2;
+						glViewport( 0, 0, screen_width, screen_height );
+						break;
+					}
+					// TODO : maybe verify size changed event
+				}
 				break;
 			}
 			case SDL_KEYDOWN:
@@ -141,18 +173,16 @@ int main( int argc, char* args[] )
 {
 	initializeSDLContext();
 
-	window_surface = SDL_GetWindowSurface( window );
-	{
-		SDL_Rect *dest_rectangle = NULL;
-		Uint32 color = SDL_MapRGB( window_surface->format, 0xFF, 0xFF, 0xFF );
-		SDL_FillRect( window_surface, dest_rectangle, color );
-	}
-
-	SDL_UpdateWindowSurface( window );
-
 	while ( running )
 	{
 		handleInputEvents();
+
+//
+
+
+		glClearColor( 0.2f, 0.3f, 0.3f, 1.0f );
+		glClear( GL_COLOR_BUFFER_BIT );
+		SDL_GL_SwapWindow( window );
 	}
 
 	destroySDLContext();
