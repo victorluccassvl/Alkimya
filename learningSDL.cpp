@@ -13,6 +13,115 @@ SDL_GLContext context = NULL;
 bool running = true;
 int screen_width = 800;
 int screen_height = 600;
+float vertex[] = 
+{
+	-0.5f, -0.5f, 0.0f,
+	 0.5f, -0.5f, 0.0f,
+	 0.0f,  0.5f, 0.0f
+};
+unsigned int vertex_buffer_object;
+unsigned int vertex_array_object;
+unsigned int vertex_shader;
+unsigned int fragment_shader;
+unsigned int shader_program;
+
+
+unsigned int createShader( char** shader_sources, int sources, GLenum shader_type )
+{
+	unsigned int new_shader;
+
+	switch ( shader_type )
+	{
+		case GL_VERTEX_SHADER:
+		{
+			new_shader = glCreateShader( GL_VERTEX_SHADER );
+			break;
+		}
+
+		case GL_FRAGMENT_SHADER:
+		{
+			new_shader = glCreateShader( GL_FRAGMENT_SHADER );
+			break;
+		}
+
+		default:
+		{
+			printf( "Tipo inválido de shader. Criação abortada.\n" );
+			assert(false);
+			break;
+		}
+	}
+
+	glShaderSource( new_shader, sources, shader_sources, NULL );
+
+	glCompileShader( new_shader );
+
+	int success;
+	char info_log[512];
+	glGetShaderiv( new_shader, GL_COMPILE_STATUS, &success );
+
+	if ( ! success )
+	{
+		glGetShaderInfoLog( new_shader, 512, NULL, info_log );
+		printf( "Falha ao compilar o vertex shader.\n%s\n", info_log );
+		assert(false);
+	}
+
+	return new_shader;
+}
+
+unsigned int createProgram( unsigned int *shaders, int quantity )
+{
+	unsigned int new_program;
+
+	new_program = glCreateProgram();
+
+	for( int i = 0; i < quantity ; i++ )
+	{
+		glAttachShader( new_program, shaders[i] );
+	}
+
+	glLinkProgram( new_program );
+
+	int success;
+	char info_log[512];
+	glGetProgramiv( new_program, GL_LINK_STATUS, &success );
+
+	if ( ! success )
+	{
+		glGetProgramInfoLog( new_program, 512, NULL, info_log );
+		printf( "Falha ao linkar o programa shader.\n%s\n", info_log );
+		assert(false);
+	}
+
+	return new_program;
+}
+
+char* extractFileText( const char *path )
+{
+	FILE *arq = NULL;
+	char *text = NULL;
+
+	arq = fopen( path, "r" );
+
+	if ( arq == NULL )
+	{
+		printf( "Falha ao abrir o arquivo %s\n", path );
+		assert(false);
+	}
+
+	fseek( arq, 0, SEEK_END );
+	int size = ftell( arq );
+	rewind( arq );
+	text = ( char* ) malloc( sizeof(char) * ( size + 1 ) );
+
+	fread( text, size, 1, arq );
+	text[size] = '\0';
+
+	fclose( arq );
+
+	return text;
+}
 
 void initializeSDLContext()
 {
@@ -173,15 +282,49 @@ int main( int argc, char* args[] )
 {
 	initializeSDLContext();
 
+	char *vertex_shader_source = extractFileText( "shader.vert" );
+	vertex_shader = createShader( &vertex_shader_source, 1, GL_VERTEX_SHADER );
+	free( vertex_shader_source );
+
+	char *fragment_shader_source = extractFileText( "shader.frag" );
+	fragment_shader = createShader( &fragment_shader_source, 1, GL_FRAGMENT_SHADER );
+	free( fragment_shader_source );
+
+	unsigned int shaders[2];
+	shaders[0] = vertex_shader;
+	shaders[1] = fragment_shader;
+
+	shader_program = createProgram( shaders, 2 );
+
+	glDeleteShader( vertex_shader );
+	glDeleteShader( fragment_shader );
+
+	{
+		unsigned int num_buffers = 1;
+		glGenVertexArrays( num_buffers, &vertex_array_object );
+	}
+	glBindVertexArray( vertex_array_object );
+	{
+		unsigned int num_buffers = 1;
+		glGenBuffers( num_buffers, &vertex_buffer_object );
+	}
+	glBindBuffer( GL_ARRAY_BUFFER, vertex_buffer_object );
+	glBufferData( GL_ARRAY_BUFFER, sizeof( float ) * 9, vertex, GL_STATIC_DRAW );
+
+	glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof( float ), ( void* ) 0 );
+	glEnableVertexAttribArray( 0 );
+
 	while ( running )
 	{
 		handleInputEvents();
 
-//
-
-
 		glClearColor( 0.2f, 0.3f, 0.3f, 1.0f );
 		glClear( GL_COLOR_BUFFER_BIT );
+
+		glUseProgram( shader_program );
+		glBindVertexArray( vertex_array_object );
+		glDrawArrays( GL_TRIANGLES, 0, 3 );
+
 		SDL_GL_SwapWindow( window );
 	}
 
