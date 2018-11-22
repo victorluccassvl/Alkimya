@@ -1,6 +1,8 @@
 #include <glad/glad.h>
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
+#include <SDL2/SDL_image.h>
 
 #include <stdio.h>
 #include <assert.h>
@@ -13,20 +15,76 @@ SDL_GLContext context = NULL;
 bool running = true;
 int screen_width = 800;
 int screen_height = 600;
-float vertex[] = 
+float vertex[] = {
+    // positions          // colors           // texture coords
+     0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,
+     0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,
+    -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,
+    -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f
+};
+unsigned int indices[] =
 {
-	-0.5f, -0.5f, 0.0f,
-	 0.5f, -0.5f, 0.0f,
-	 0.0f,  0.5f, 0.0f
+	0, 1, 3,
+	1, 2, 3
 };
 unsigned int vertex_buffer_object;
 unsigned int vertex_array_object;
+unsigned int element_buffer_object;
 unsigned int vertex_shader;
 unsigned int fragment_shader;
 unsigned int shader_program;
+unsigned int texture;
 
+unsigned int createTexture( const char *texture_source, int *width, int *height, unsigned int channels )
+{
+	SDL_Surface *image = IMG_Load( texture_source );
+	unsigned int new_texture;
 
-unsigned int createShader( char** shader_sources, int sources, GLenum shader_type )
+	if ( image == NULL )
+	{
+		printf( "SDL image could not load texture %s! SDL_Error: %s\n", texture_source, IMG_GetError() );
+		assert(false);
+		return -1;
+	}
+	else
+	{
+		bool valid_data = channels == 3 || channels == 4;
+		//valid_data = valid_data || ( ! ( image->BitsPerPixel == 8 ) ); 
+		if ( ! valid_data )
+		{
+			printf( "Invalid type of image data, texture can't be created\n" );
+			assert(false);
+		}
+
+		*width = image->w;
+		*height = image->h;
+
+		glGenTextures( 1, &new_texture );
+		glBindTexture( GL_TEXTURE_2D, new_texture );
+
+		switch ( channels )
+		{
+			case 3:
+			{
+				glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, *width, *height, 0, GL_RGB, GL_UNSIGNED_BYTE, ( unsigned char* ) image->pixels );
+				break;
+			}
+			case 4:
+			{
+				glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, *width, *height, 0, GL_RGBA, GL_UNSIGNED_BYTE, ( unsigned char* ) image->pixels );
+				break;
+			}
+		}
+
+		glGenerateMipmap( GL_TEXTURE_2D );
+
+		SDL_FreeSurface( image );
+
+		return new_texture;
+	}
+}
+
+unsigned int createShader( char **shader_sources, int sources, GLenum shader_type )
 {
 	unsigned int new_shader;
 
@@ -63,7 +121,20 @@ unsigned int createShader( char** shader_sources, int sources, GLenum shader_typ
 	if ( ! success )
 	{
 		glGetShaderInfoLog( new_shader, 512, NULL, info_log );
-		printf( "Falha ao compilar o vertex shader.\n%s\n", info_log );
+		switch ( shader_type )
+		{
+			case GL_VERTEX_SHADER:
+			{
+				printf( "Falha ao compilar o vertex shader.\n%s\n", info_log );
+				break;
+			}
+
+			case GL_FRAGMENT_SHADER:
+			{
+				printf( "Falha ao compilar o fragment shader.\n%s\n", info_log );
+				break;
+			}
+		}
 		assert(false);
 	}
 
@@ -131,6 +202,15 @@ void initializeSDLContext()
 		assert(false);
 	}
 
+	{
+		int flags = IMG_INIT_JPG;
+		if ( ( IMG_Init( flags ) & flags ) != flags )
+		{
+			printf( "SDL image could not initialize! SDL_Error: %s\n", IMG_GetError() );
+			assert(false);
+		}
+	}
+
 	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
 	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 3 );
 	SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
@@ -182,6 +262,7 @@ void destroySDLContext()
 	SDL_GL_DeleteContext( context );
 	SDL_DestroyWindow( window );
 	Mix_Quit();
+	IMG_Quit();
 	SDL_Quit();
 }
 
@@ -278,6 +359,7 @@ void soundFunctions()
 	Mix_FreeMusic( long_sound );
 }
 
+
 int main( int argc, char* args[] )
 {
 	initializeSDLContext();
@@ -302,17 +384,35 @@ int main( int argc, char* args[] )
 	{
 		unsigned int num_buffers = 1;
 		glGenVertexArrays( num_buffers, &vertex_array_object );
-	}
+	}	
 	glBindVertexArray( vertex_array_object );
+
 	{
 		unsigned int num_buffers = 1;
 		glGenBuffers( num_buffers, &vertex_buffer_object );
 	}
 	glBindBuffer( GL_ARRAY_BUFFER, vertex_buffer_object );
-	glBufferData( GL_ARRAY_BUFFER, sizeof( float ) * 9, vertex, GL_STATIC_DRAW );
 
-	glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof( float ), ( void* ) 0 );
+	{
+		unsigned int num_buffers = 1;
+		glGenBuffers( num_buffers, &element_buffer_object );
+	}
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, element_buffer_object );
+
+	glBufferData( GL_ARRAY_BUFFER, sizeof( float ) * 32, vertex, GL_STATIC_DRAW );
+	glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof( unsigned int ) * 6, indices, GL_STATIC_DRAW );
+
+	glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof( float ), ( void* ) 0 );
 	glEnableVertexAttribArray( 0 );
+
+	glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof( float ), ( void* ) ( 3 * sizeof( float ) ) );
+	glEnableVertexAttribArray( 1 );
+
+	glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof( float ), ( void* ) ( 6 * sizeof( float ) ) );
+	glEnableVertexAttribArray( 2 );
+
+	int width, height;
+	texture = createTexture( "container.jpg", &width, &height, 3 );
 
 	while ( running )
 	{
@@ -323,7 +423,16 @@ int main( int argc, char* args[] )
 
 		glUseProgram( shader_program );
 		glBindVertexArray( vertex_array_object );
-		glDrawArrays( GL_TRIANGLES, 0, 3 );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
+		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
+		float border_color[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+		glTexParameterfv( GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border_color );
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST );
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+		glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+		glBindTexture( GL_TEXTURE_2D, texture );
+		glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0 );
+		glBindVertexArray( 0 );
 
 		SDL_GL_SwapWindow( window );
 	}

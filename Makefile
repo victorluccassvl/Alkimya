@@ -2,7 +2,7 @@ CPP = learningSDL.cpp glad.c
 
 COMPILE_FLAGS = -Wall -Werror
 
-LINKER_FLAGS = -lSDL2 -lSDL2_mixer -lGL -lX11 -lpthread -lXi -ldl -lXrandr
+LINKER_FLAGS = -lSDL2 -lSDL2_mixer -lSDL2_image -lGL -lX11 -lpthread -lXi -ldl -lXrandr
 
 EXEC = learningSDL
 
