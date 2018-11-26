@@ -1,3 +1,5 @@
+#include <cglm/cglm.h>
+
 #include <glad/glad.h>
 
 #include <SDL2/SDL.h>
@@ -16,24 +18,57 @@ bool running = true;
 int screen_width = 800;
 int screen_height = 600;
 float vertex[] = {
-    // positions          // colors           // texture coords
-     0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,
-     0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,
-    -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,
-    -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
 };
-unsigned int indices[] =
-{
-	0, 1, 3,
-	1, 2, 3
-};
+
 unsigned int vertex_buffer_object;
 unsigned int vertex_array_object;
 unsigned int element_buffer_object;
 unsigned int vertex_shader;
 unsigned int fragment_shader;
 unsigned int shader_program;
-unsigned int texture;
+unsigned int texture1;
+unsigned int texture2;
 
 unsigned int createTexture( const char *texture_source, int *width, int *height, unsigned int channels )
 {
@@ -364,6 +399,8 @@ int main( int argc, char* args[] )
 {
 	initializeSDLContext();
 
+	glEnable( GL_DEPTH_TEST );
+
 	char *vertex_shader_source = extractFileText( "shader.vert" );
 	vertex_shader = createShader( &vertex_shader_source, 1, GL_VERTEX_SHADER );
 	free( vertex_shader_source );
@@ -399,39 +436,90 @@ int main( int argc, char* args[] )
 	}
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, element_buffer_object );
 
-	glBufferData( GL_ARRAY_BUFFER, sizeof( float ) * 32, vertex, GL_STATIC_DRAW );
-	glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof( unsigned int ) * 6, indices, GL_STATIC_DRAW );
+	glBufferData( GL_ARRAY_BUFFER, sizeof( float ) * 180, vertex, GL_STATIC_DRAW );
+	//glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof( unsigned int ) * 6, indices, GL_STATIC_DRAW );
 
-	glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof( float ), ( void* ) 0 );
+	glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof( float ), ( void* ) 0 );
 	glEnableVertexAttribArray( 0 );
 
-	glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof( float ), ( void* ) ( 3 * sizeof( float ) ) );
+	glVertexAttribPointer( 1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof( float ), ( void* ) ( 3 * sizeof( float ) ) );
 	glEnableVertexAttribArray( 1 );
 
-	glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof( float ), ( void* ) ( 6 * sizeof( float ) ) );
-	glEnableVertexAttribArray( 2 );
+	//glVertexAttribPointer( 2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof( float ), ( void* ) ( 6 * sizeof( float ) ) );
+	//glEnableVertexAttribArray( 2 );
 
-	int width, height;
-	texture = createTexture( "container.jpg", &width, &height, 3 );
+	int width1, height1;
+	int width2, height2;
+	texture1 = createTexture( "container.jpg", &width1, &height1, 3 );
+	texture2 = createTexture( "awesomeface.png", &width2, &height2, 4 );
+
+	mat4 view = GLM_MAT4_IDENTITY_INIT;
+	mat4 projection = GLM_MAT4_IDENTITY_INIT;
+
+	vec3 rotation_axis = { 1.0f, 0.3f, 0.5f };
+
+	vec3 cube_positions[] = {
+		{ 0.0f, 0.0f, 0.0f },
+		{ 2.0f, 5.0f, -15.0f },
+		{ -1.5f, -2.2f, -2.5f },
+		{ -3.8f, -2.0f, -12.3f },
+		{ 2.4f, -0.4f, -3.5f },
+		{ -1.7f, 3.0f, -7.5f },
+		{ 1.3f, -2.0f, -2.5f },
+		{ 1.5f, 2.0f, -2.5f },
+		{ 1.5f, 0.2f, -1.5f },
+		{ -1.3f, 1.0f, -1.5f }
+	};
+
+	vec3 camera = { 0.0f, 0.0f, -3.0f };
+	glm_translate( view, camera );
+
+	glm_perspective( glm_rad( 45.0f ), screen_width / screen_height, 0.1f, 100.0f, projection );
 
 	while ( running )
 	{
 		handleInputEvents();
 
 		glClearColor( 0.2f, 0.3f, 0.3f, 1.0f );
-		glClear( GL_COLOR_BUFFER_BIT );
+		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
 		glUseProgram( shader_program );
 		glBindVertexArray( vertex_array_object );
-		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
-		glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
-		float border_color[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-		glTexParameterfv( GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border_color );
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST );
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-		glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-		glBindTexture( GL_TEXTURE_2D, texture );
-		glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0 );
+
+		for( unsigned int i = 0; i < 10; i++ )
+		{
+
+			mat4 model = GLM_MAT4_IDENTITY_INIT;
+			glm_translate( model, cube_positions[i] );
+			glm_rotate( model, glm_rad( 20.0f * i ) + ( ( float ) SDL_GetTicks() / 1000 ), rotation_axis );
+
+			unsigned int model_loc = glGetUniformLocation( shader_program, "model" );
+			glUniformMatrix4fv( model_loc, 1, GL_FALSE, model[0] );
+			unsigned int view_loc = glGetUniformLocation( shader_program, "view" );
+			glUniformMatrix4fv( view_loc, 1, GL_FALSE, view[0] );
+			unsigned int projection_loc = glGetUniformLocation( shader_program, "projection" );
+			glUniformMatrix4fv( projection_loc, 1, GL_FALSE, projection[0] );
+
+			float border_color[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+			glTexParameteri(  GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
+			glTexParameteri(  GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
+			glTexParameterfv( GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border_color );
+			glTexParameteri(  GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST );
+			glTexParameteri(  GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+
+			glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+		
+			glActiveTexture( GL_TEXTURE1 );
+			glBindTexture( GL_TEXTURE_2D, texture1 );
+			glActiveTexture( GL_TEXTURE2 );
+			glBindTexture( GL_TEXTURE_2D, texture2 );
+
+			glUniform1i( glGetUniformLocation( shader_program, "text1" ), 1 );
+			glUniform1i( glGetUniformLocation( shader_program, "text2" ), 2 );
+
+			glDrawArrays( GL_TRIANGLES, 0, 36 );
+		}
+
 		glBindVertexArray( 0 );
 
 		SDL_GL_SwapWindow( window );
