@@ -14,15 +14,18 @@
 
 typedef struct {
 	vec3 position;
-	versor orientation;
+	vec3 front;
+	vec3 right;
+	vec3 up;
+	vec3 world_up;
+	float x_rot;
+	float y_rot;
 	float speed;
 } Camera;
 
 typedef struct {
 	float x;
 	float y;
-	float last_x;
-	float last_y;
 	float sensitivity;
 } Mouse;
 
@@ -384,46 +387,34 @@ void handleInputEvents()
 				//event.key.keysym.sym = SDLK_a, SDLK_b, ...
 				//event.key.keysym.mod = KMOD_NONE, KMODE_SHIFT, ...
 
-				mat3 transform;
-
-				vec3 world_front = { 0.0f, 0.0f, -1.0f };
-				vec3 world_right = { 1.0f, 0.0f, 0.0f };
-				vec3 world_up = { 0.0f, 1.0f, 0.0f };
-
-				vec3 front;
-				vec3 right;
-				vec3 up;
-
-				glm_quat_mat3( cam.orientation, transform );
-
-				glm_mat3_mulv( transform, world_front, front );
-				glm_mat3_mulv( transform, world_up, up );
-				glm_mat3_mulv( transform, world_right, right );
-
 				switch ( event.key.keysym.sym )
 				{
 					case ( SDLK_w ):
 					{
-						glm_vec3_scale( front, cam.speed, front );
-						glm_vec3_add( cam.position, front, cam.position );
+						vec3 scaled;
+						glm_vec3_scale( cam.front, cam.speed * time.delta, scaled );
+						glm_vec3_add( cam.position, scaled, cam.position );
 						break;
 					}
 					case ( SDLK_s ):
 					{
-						glm_vec3_scale( front, cam.speed, front );
-						glm_vec3_sub( cam.position, front, cam.position );
+						vec3 scaled;
+						glm_vec3_scale( cam.front, cam.speed * time.delta, scaled );
+						glm_vec3_sub( cam.position, scaled, cam.position );
 						break;
 					}
 					case ( SDLK_a ):
 					{
-						glm_vec3_scale( right, cam.speed, right );
-						glm_vec3_sub( cam.position, right, cam.position );
+						vec3 scaled;
+						glm_vec3_scale( cam.right, cam.speed * time.delta, scaled );
+						glm_vec3_sub( cam.position, scaled, cam.position );
 						break;
 					}
 					case ( SDLK_d ):
 					{
-						glm_vec3_scale( right, cam.speed, right );
-						glm_vec3_add( cam.position, right, cam.position );
+						vec3 scaled;
+						glm_vec3_scale( cam.right, cam.speed * time.delta, scaled );
+						glm_vec3_add( cam.position, scaled, cam.position );
 						break;
 					}
 				}
@@ -440,44 +431,47 @@ void handleInputEvents()
 			}
 			case SDL_MOUSEMOTION:
 			{
-				if ( mouse.last_x == -1 && mouse.last_y == -1 )
-				{
-					mouse.last_x = event.motion.x;
-					mouse.last_y = event.motion.y;
-				}
-
-				mouse.x = event.motion.x;
-				mouse.y = event.motion.y;
-
-				float x_offset = mouse.x - mouse.last_x;
-				float y_offset = mouse.y - mouse.last_y;
-
-				mouse.last_x = mouse.x;
-				mouse.last_y = mouse.y;
-
-				x_offset *= mouse.sensitivity;
-				y_offset *= mouse.sensitivity;
-
-				x_offset = -glm_rad( x_offset );
-				y_offset = -glm_rad( y_offset );
-
-				versor x_rot;
-				versor y_rot;
-
-				//versor result;
-				glm_quat( x_rot, x_offset, 0.0f, 1.0f, 0.0f );
-				glm_quat( y_rot, y_offset, 1.0f, 0.0f, 0.0f );
-
-				glm_quat_normalize( x_rot );
-				glm_quat_normalize( y_rot );
-				glm_quat_mul( cam.orientation, x_rot, cam.orientation );
-				glm_quat_mul( y_rot, cam.orientation, cam.orientation );
-
-
 				//event.motion.timestamp;
 				//event.motion.state = SDL_BUTTON_LMASK, SDL_BUTTON_RMASK, ...
 				//event.motion.x;
 				//event.motion.y;
+				if ( event.motion.state & SDL_BUTTON_RMASK )
+				{
+					if ( mouse.x == -1 && mouse.y == -1 )
+					{
+						mouse.x = event.motion.x;
+						mouse.y = event.motion.y;
+					}
+
+				    float x_offset = ( event.motion.x - mouse.x ) * cam.speed;
+				    float y_offset = ( event.motion.y - mouse.y ) * cam.speed * ( -1 );
+
+				    cam.y_rot += x_offset;
+				    cam.x_rot += y_offset;
+
+				    if( cam.x_rot > 89.0f )
+				    {
+				        cam.x_rot = 89.0f;
+				    }
+				    if( cam.x_rot < -89.0f )
+				    {
+				        cam.x_rot = -89.0f;
+				    }
+
+				    cam.front[0] = cos( glm_rad( cam.x_rot ) ) * cos( glm_rad( cam.y_rot ) );
+				    cam.front[1] = sin( glm_rad( cam.x_rot ) );
+				    cam.front[2] = cos( glm_rad( cam.x_rot ) ) * sin( glm_rad( cam.y_rot ) );
+
+				    glm_vec3_normalize( cam.front );
+				    glm_vec3_cross( cam.front, cam.world_up, cam.right );
+				    glm_vec3_normalize( cam.right );
+				    glm_vec3_cross( cam.right, cam.front, cam.up );
+				    glm_vec3_normalize( cam.up );
+				}
+
+				mouse.x = event.motion.x;
+				mouse.y = event.motion.y;
+				
 				break;
 			}
 			case SDL_MOUSEBUTTONDOWN:
@@ -601,13 +595,19 @@ int main( int argc, char* args[] )
 	};
 
 
+	v3all( cam.world_up, 0.0f, 1.0f, 0.0f );
 	v3all( cam.position, 0.0f, 0.0f, 3.0f );
-	glm_quat( cam.orientation, glm_rad(0), 0.0f, 1.0f, 0.0f );
-	glm_quat_normalize( cam.orientation );
+	v3all( cam.front, 0.0f, 0.0f, -1.0f );
+    glm_vec3_cross( cam.front, cam.world_up, cam.right );
+    glm_vec3_normalize( cam.right );
+    glm_vec3_cross( cam.right, cam.front, cam.up );
+    glm_vec3_normalize( cam.up );
+	cam.x_rot = 0.0f;
+	cam.y_rot = -90.0f;
 	cam.speed = 2.5f;
 
-	mouse.last_x = -1;
-	mouse.last_y = -1;
+	mouse.x = -1;
+	mouse.y = -1;
 	mouse.sensitivity = 0.05f;
 
 	glm_perspective( glm_rad( 45.0f ), screen_width / screen_height, 0.1f, 100.0f, projection );
@@ -618,8 +618,6 @@ int main( int argc, char* args[] )
 		time.delta = time.current - time.last;
 		time.last = time.current;
 
-		cam.speed = 2.5f * time.delta;
-
 		handleInputEvents();
 
 		glClearColor( 0.2f, 0.3f, 0.3f, 1.0f );
@@ -628,7 +626,9 @@ int main( int argc, char* args[] )
 		glUseProgram( shader_program );
 		glBindVertexArray( vertex_array_object );
 
-		glm_quat_look( cam.position, cam.orientation, view );
+		vec3 cam_target;
+		glm_vec3_add( cam.position, cam.front, cam_target );
+		glm_lookat( cam.position, cam_target, cam.up, view );
 
 		for( unsigned int i = 0; i < 10; i++ )
 		{
