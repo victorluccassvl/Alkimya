@@ -12,6 +12,26 @@
 #define ERROR -1
 #define FAILED -1
 
+typedef struct {
+	vec3 position;
+	versor orientation;
+	float speed;
+} Camera;
+
+typedef struct {
+	float x;
+	float y;
+	float last_x;
+	float last_y;
+	float sensitivity;
+} Mouse;
+
+typedef struct {
+	float delta;
+	float last;
+	float current;
+} Time;
+
 SDL_Window *window = NULL;
 SDL_GLContext context = NULL;
 bool running = true;
@@ -61,6 +81,10 @@ float vertex[] = {
     -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
 };
 
+Camera cam;
+Mouse mouse;
+Time time;
+
 unsigned int vertex_buffer_object;
 unsigned int vertex_array_object;
 unsigned int element_buffer_object;
@@ -69,6 +93,28 @@ unsigned int fragment_shader;
 unsigned int shader_program;
 unsigned int texture1;
 unsigned int texture2;
+
+inline void v3x( vec3 vec, float x )
+{
+	vec[0] = x;
+}
+
+inline void v3y( vec3 vec, float y )
+{
+	vec[1] = y;
+}
+
+inline void v3z( vec3 vec, float z )
+{
+	vec[2] = z;
+}
+
+inline void v3all( vec3 vec, float x, float y, float z )
+{
+	v3x( vec, x );
+	v3y( vec, y );
+	v3z( vec, z );
+}
 
 unsigned int createTexture( const char *texture_source, int *width, int *height, unsigned int channels )
 {
@@ -337,6 +383,50 @@ void handleInputEvents()
 				//event.key.keysym;
 				//event.key.keysym.sym = SDLK_a, SDLK_b, ...
 				//event.key.keysym.mod = KMOD_NONE, KMODE_SHIFT, ...
+
+				mat3 transform;
+
+				vec3 world_front = { 0.0f, 0.0f, -1.0f };
+				vec3 world_right = { 1.0f, 0.0f, 0.0f };
+				vec3 world_up = { 0.0f, 1.0f, 0.0f };
+
+				vec3 front;
+				vec3 right;
+				vec3 up;
+
+				glm_quat_mat3( cam.orientation, transform );
+
+				glm_mat3_mulv( transform, world_front, front );
+				glm_mat3_mulv( transform, world_up, up );
+				glm_mat3_mulv( transform, world_right, right );
+
+				switch ( event.key.keysym.sym )
+				{
+					case ( SDLK_w ):
+					{
+						glm_vec3_scale( front, cam.speed, front );
+						glm_vec3_add( cam.position, front, cam.position );
+						break;
+					}
+					case ( SDLK_s ):
+					{
+						glm_vec3_scale( front, cam.speed, front );
+						glm_vec3_sub( cam.position, front, cam.position );
+						break;
+					}
+					case ( SDLK_a ):
+					{
+						glm_vec3_scale( right, cam.speed, right );
+						glm_vec3_sub( cam.position, right, cam.position );
+						break;
+					}
+					case ( SDLK_d ):
+					{
+						glm_vec3_scale( right, cam.speed, right );
+						glm_vec3_add( cam.position, right, cam.position );
+						break;
+					}
+				}
 				break;
 			}
 			case SDL_KEYUP:
@@ -346,6 +436,48 @@ void handleInputEvents()
 				//event.key.keysym;
 				//event.key.keysym.sym = SDLK_a, SDLK_b, ...
 				//event.key.keysym.mod = KMOD_NONE, KMODE_SHIFT, ...
+				break;
+			}
+			case SDL_MOUSEMOTION:
+			{
+				if ( mouse.last_x == -1 && mouse.last_y == -1 )
+				{
+					mouse.last_x = event.motion.x;
+					mouse.last_y = event.motion.y;
+				}
+
+				mouse.x = event.motion.x;
+				mouse.y = event.motion.y;
+
+				float x_offset = mouse.x - mouse.last_x;
+				float y_offset = mouse.y - mouse.last_y;
+
+				mouse.last_x = mouse.x;
+				mouse.last_y = mouse.y;
+
+				x_offset *= mouse.sensitivity;
+				y_offset *= mouse.sensitivity;
+
+				x_offset = -glm_rad( x_offset );
+				y_offset = -glm_rad( y_offset );
+
+				versor x_rot;
+				versor y_rot;
+
+				//versor result;
+				glm_quat( x_rot, x_offset, 0.0f, 1.0f, 0.0f );
+				glm_quat( y_rot, y_offset, 1.0f, 0.0f, 0.0f );
+
+				glm_quat_normalize( x_rot );
+				glm_quat_normalize( y_rot );
+				glm_quat_mul( cam.orientation, x_rot, cam.orientation );
+				glm_quat_mul( y_rot, cam.orientation, cam.orientation );
+
+
+				//event.motion.timestamp;
+				//event.motion.state = SDL_BUTTON_LMASK, SDL_BUTTON_RMASK, ...
+				//event.motion.x;
+				//event.motion.y;
 				break;
 			}
 			case SDL_MOUSEBUTTONDOWN:
@@ -393,7 +525,6 @@ void soundFunctions()
 	Mix_FreeChunk( short_sound );
 	Mix_FreeMusic( long_sound );
 }
-
 
 int main( int argc, char* args[] )
 {
@@ -456,8 +587,6 @@ int main( int argc, char* args[] )
 	mat4 view = GLM_MAT4_IDENTITY_INIT;
 	mat4 projection = GLM_MAT4_IDENTITY_INIT;
 
-	vec3 rotation_axis = { 1.0f, 0.3f, 0.5f };
-
 	vec3 cube_positions[] = {
 		{ 0.0f, 0.0f, 0.0f },
 		{ 2.0f, 5.0f, -15.0f },
@@ -471,13 +600,26 @@ int main( int argc, char* args[] )
 		{ -1.3f, 1.0f, -1.5f }
 	};
 
-	vec3 camera = { 0.0f, 0.0f, -3.0f };
-	glm_translate( view, camera );
+
+	v3all( cam.position, 0.0f, 0.0f, 3.0f );
+	glm_quat( cam.orientation, glm_rad(0), 0.0f, 1.0f, 0.0f );
+	glm_quat_normalize( cam.orientation );
+	cam.speed = 2.5f;
+
+	mouse.last_x = -1;
+	mouse.last_y = -1;
+	mouse.sensitivity = 0.05f;
 
 	glm_perspective( glm_rad( 45.0f ), screen_width / screen_height, 0.1f, 100.0f, projection );
 
 	while ( running )
 	{
+		time.current = ( ( float ) SDL_GetTicks() ) / 1000;
+		time.delta = time.current - time.last;
+		time.last = time.current;
+
+		cam.speed = 2.5f * time.delta;
+
 		handleInputEvents();
 
 		glClearColor( 0.2f, 0.3f, 0.3f, 1.0f );
@@ -486,12 +628,13 @@ int main( int argc, char* args[] )
 		glUseProgram( shader_program );
 		glBindVertexArray( vertex_array_object );
 
+		glm_quat_look( cam.position, cam.orientation, view );
+
 		for( unsigned int i = 0; i < 10; i++ )
 		{
 
 			mat4 model = GLM_MAT4_IDENTITY_INIT;
 			glm_translate( model, cube_positions[i] );
-			glm_rotate( model, glm_rad( 20.0f * i ) + ( ( float ) SDL_GetTicks() / 1000 ), rotation_axis );
 
 			unsigned int model_loc = glGetUniformLocation( shader_program, "model" );
 			glUniformMatrix4fv( model_loc, 1, GL_FALSE, model[0] );

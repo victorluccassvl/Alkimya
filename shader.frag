@@ -11,5 +11,4 @@ void main()
 {
 	vec2 cords2 = vec2( 1 - cords.x, cords.y );
 	frag_color = mix( texture( text1, cords ), texture( text2, cords2 ), 0.2f );
-	frag_color = frag_color;
 }
