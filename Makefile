@@ -1,4 +1,4 @@
-CPP = learningSDL.cpp glad.c
+CPP = SDLWindow.cpp glad.c
 
 COMPILE_FLAGS = -Wall -Werror
 
