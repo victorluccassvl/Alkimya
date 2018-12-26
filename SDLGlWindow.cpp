@@ -1,13 +1,9 @@
-#include "constants.cpp"
+#include "macros.cpp"
 #include "configuration.cpp"
-
-#include <glad/glad.h>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_image.h>
-
-#include <assert.h>
 
 class SDLGlWindow {
 
@@ -16,27 +12,30 @@ class SDLGlWindow {
 		SDL_GLContext context;
 		bool context_exists;
 
-		char title[MAX_WINDOW_TITLE_NAME];
+		char title[_SDL_WINDOW_MAX_TITLE_NAME];
 		int x_pos;
 		int y_pos;
 		int width;
 		int height;
 
 		SDLGlWindow();
-		void  endSDLGlWindow();
 
-		void  initializeSDLImage();
-		void  initializeSDLAudio();
-		void  initializeSDLContext();
-		void  initializeSDLWindow();
+		void  deleteWindow();
+
+		void  initializeWindow();
+		void  initializeGlContext();
+		void  initializeImage();
+		void  initializeAudio();
 
 		uint  createGlTexture( const char *texture_source, int *width, int *height, uint channels );
 
 		void  soundFunctions();
 
-		float getMilliseconds();
+		float getMillisecondsAge();
 
 		void  updateWindow();
+
+		//TODO: Deal with inputs
 };
 
 
@@ -52,7 +51,7 @@ SDLGlWindow::SDLGlWindow()
 }
 
 
-void SDLGlWindow::endSDLGlWindow()
+void SDLGlWindow::deleteWindow()
 {
 	if ( this->context_exists )
 	{
@@ -75,27 +74,29 @@ void SDLGlWindow::endSDLGlWindow()
 }
 
 
-void SDLGlWindow::initializeSDLImage()
+void SDLGlWindow::initializeWindow()
 {
-	if ( ( IMG_Init( _SDL_IMG_FLAGS ) & _SDL_IMG_FLAGS ) != _SDL_IMG_FLAGS )
+	if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO ) == FAILED )
 	{
-		printf( "SDL image could not initialize! SDL_Error: %s\n", IMG_GetError() );
+		printf( "SDL could not initialize! SDL_Error: %s\n", SDL_GetError() );
+		STOP;
+	}
+
+	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, _GL_MAJOR_VERSION );
+	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, _GL_MINOR_VERSION );
+	SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
+
+	this->window = SDL_CreateWindow( this->title, this->x_pos, this->y_pos, this->width, this->height, _SDL_WINDOW_FLAGS );
+
+	if ( this->window == NULL )
+	{
+		printf( "SDL coult not create window! SDL_Error: %s\n", SDL_GetError() );
 		STOP;
 	}
 }
 
 
-void SDLGlWindow::initializeSDLAudio()
-{
-	if ( Mix_OpenAudio( 22050, MIX_DEFAULT_FORMAT, 2, 2048 ) == FAILED )
-	{
-		printf( "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError() );
-		STOP;
-	}
-}
-
-
-void SDLGlWindow::initializeSDLContext()
+void SDLGlWindow::initializeGlContext()
 {
 	if ( this->window == NULL )
 	{
@@ -123,23 +124,21 @@ void SDLGlWindow::initializeSDLContext()
 }
 
 
-void SDLGlWindow::initializeSDLWindow()
+void SDLGlWindow::initializeImage()
 {
-	if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO ) == FAILED )
+	if ( ( IMG_Init( _SDL_IMG_FLAGS ) & _SDL_IMG_FLAGS ) != _SDL_IMG_FLAGS )
 	{
-		printf( "SDL could not initialize! SDL_Error: %s\n", SDL_GetError() );
+		printf( "SDL image could not initialize! SDL_Error: %s\n", IMG_GetError() );
 		STOP;
 	}
+}
 
-	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, _GL_MAJOR_VERSION );
-	SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, _GL_MINOR_VERSION );
-	SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
 
-	this->window = SDL_CreateWindow( this->title, this->x_pos, this->y_pos, this->width, this->height, _SDL_WINDOW_FLAGS );
-
-	if ( this->window == NULL )
+void SDLGlWindow::initializeAudio()
+{
+	if ( Mix_OpenAudio( 22050, MIX_DEFAULT_FORMAT, 2, 2048 ) == FAILED )
 	{
-		printf( "SDL coult not create window! SDL_Error: %s\n", SDL_GetError() );
+		printf( "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError() );
 		STOP;
 	}
 }
@@ -208,7 +207,7 @@ void SDLGlWindow::soundFunctions()
 }
 
 
-float SDLGlWindow::getMilliseconds()
+float SDLGlWindow::getMillisecondsAge()
 {
 	return ( float ) SDL_GetTicks();
 }
@@ -222,22 +221,4 @@ void SDLGlWindow::updateWindow()
 		STOP;
 	}
 	SDL_GL_SwapWindow( this->window );
-}
-
-int main()
-{
-
-	SDLGlWindow main_window;
-
-	main_window.initializeSDLWindow();
-	main_window.initializeSDLContext();
-	main_window.initializeSDLAudio();
-	main_window.initializeSDLImage();
-
-
-
-
-
-	main_window.endSDLGlWindow();
-	return 0;
 }
