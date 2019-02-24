@@ -2,7 +2,7 @@ CPP = main.cpp
 
 COMPILE_FLAGS = -Wall -Werror
 
-LINKER_FLAGS = -lSDL2 -lSDL2_mixer -lSDL2_image -lGL -lX11 -lpthread -lXi -ldl -lXrandr
+LINKER_FLAGS = -lSDL2 -lSDL2_mixer -lSDL2_image -lGL -lX11 -lpthread -lXi -ldl -lXrandr -lassimp 
 
 EXEC = main
 

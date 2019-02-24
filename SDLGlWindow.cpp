@@ -1,16 +1,23 @@
-#include "macros.cpp"
-#include "configuration.cpp"
+struct SDL_State
+{
+	const Uint8 *keyboard;
+	Uint32 mouse;
+	int x;
+	int y;
+};
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_mixer.h>
-#include <SDL2/SDL_image.h>
+class SDLGlWindow
+{
 
-class SDLGlWindow {
-
+	// TODO: verificar que métodos e campos podem/devem ser mudados para stático
 	public:
 		SDL_Window *window;
 		SDL_GLContext context;
+		SDL_State state;
+		SDL_Event *event;
 		bool context_exists;
+		static bool image_initialized;
+		static bool audio_initialized;
 
 		char title[_SDL_WINDOW_MAX_TITLE_NAME];
 		int x_pos;
@@ -24,10 +31,11 @@ class SDLGlWindow {
 
 		void  initializeWindow();
 		void  initializeGlContext();
-		void  initializeImage();
-		void  initializeAudio();
 
-		uint  createGlTexture( const char *texture_source, int *width, int *height, uint channels );
+		static void initializeImage();
+		static void initializeAudio();
+
+		static uint createGlTexture( const char *texture_source, int *width, int *height );
 
 		void  soundFunctions();
 
@@ -35,9 +43,12 @@ class SDLGlWindow {
 
 		void  updateWindow();
 
-		//TODO: Deal with inputs
+		bool  getEvent();
+		void  getState();
 };
 
+bool SDLGlWindow::image_initialized = false;
+bool SDLGlWindow::audio_initialized = false;
 
 SDLGlWindow::SDLGlWindow()
 {
@@ -48,6 +59,7 @@ SDLGlWindow::SDLGlWindow()
 	this->x_pos  = _SDL_WINDOW_DEFAULT_Y_POS;
 	this->width  = _SDL_WINDOW_DEFAULT_WIDTH;
 	this->height = _SDL_WINDOW_DEFAULT_HEIGHT;
+	this->event  = NULL;
 }
 
 
@@ -131,6 +143,8 @@ void SDLGlWindow::initializeImage()
 		printf( "SDL image could not initialize! SDL_Error: %s\n", IMG_GetError() );
 		STOP;
 	}
+
+	SDLGlWindow::image_initialized = true;
 }
 
 
@@ -141,20 +155,31 @@ void SDLGlWindow::initializeAudio()
 		printf( "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError() );
 		STOP;
 	}
+
+	SDLGlWindow::audio_initialized = true;
 }
 
 
-uint SDLGlWindow::createGlTexture( const char *texture_source, int *width, int *height, uint channels )
+uint SDLGlWindow::createGlTexture( const char *texture_source, int *width, int *height )
 {
+
+	if ( ! SDLGlWindow::image_initialized )
+	{
+		printf( "SDL image not initialized, it can't create texture %s\n", texture_source );
+		STOP;
+	}
+
 	SDL_Surface *image = IMG_Load( texture_source );
 	uint new_texture;
 
 	if ( image == NULL )
 	{
-		printf( "SDL image could not load texture %s! SDL_Error: %s\n", texture_source, IMG_GetError() );
+		printf( "SDL image could not load texture %s SDL_Error: %s\n", texture_source, IMG_GetError() );
 		STOP;
 	}
 
+	uint channels = image->format->BytesPerPixel;
+ 
 	bool valid_data = channels == 3 || channels == 4;
 	if ( ! valid_data )
 	{
@@ -221,4 +246,32 @@ void SDLGlWindow::updateWindow()
 		STOP;
 	}
 	SDL_GL_SwapWindow( this->window );
+}
+
+
+bool SDLGlWindow::getEvent()
+{
+	if ( SDL_PollEvent( this->event ) == 0 )
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+
+void SDLGlWindow::getState()
+{
+
+	// SDL_BUTTON(X) returns a mask to be tested with :
+	// SDL_BUTTON_LEFT, SDL_BUTTON_RIGHT, SDL_BUTTON_MIDDLE
+	// SDL_BUTTON_X1, SDL_BUTTON_X2
+
+	// SDL_SCANCODE for keyboard tests
+
+	SDL_PumpEvents();
+	this->state.mouse = SDL_GetMouseState( &( this->state.x ), &( this->state.y ) );
+	this->state.keyboard = SDL_GetKeyboardState( NULL );
 }

@@ -1,7 +1,23 @@
-#include "SDLGlWindow.cpp"
-#include "OpenGl.cpp"
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cassert>
+#include <cglm/cglm.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
+#include <SDL2/SDL_image.h>
 
-#include <stdio.h>
+#include "glad.c"
+#include "configuration.cpp"
+#include "macros.cpp"
+#include "CGLM.cpp"
+#include "OpenGl.cpp"
+#include "Shader.cpp"
+#include "SDLGlWindow.cpp"
+#include "Model.cpp"
 
 typedef struct {
 	vec3 position;
@@ -26,78 +42,12 @@ typedef struct {
 	float current;
 } Time;
 
-float vertex[] = {
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
-};
 
 SDLGlWindow window;
 Camera cam;
 Mouse mouse;
-Time time;
+Time game_time;
 bool running = true;
-
-inline void v3x( vec3 vec, float x )
-{
-	vec[0] = x;
-}
-
-inline void v3y( vec3 vec, float y )
-{
-	vec[1] = y;
-}
-
-inline void v3z( vec3 vec, float z )
-{
-	vec[2] = z;
-}
-
-inline void v3all( vec3 vec, float x, float y, float z )
-{
-	v3x( vec, x );
-	v3y( vec, y );
-	v3z( vec, z );
-}
-
 
 
 void handleInputEvents()
@@ -143,28 +93,28 @@ void handleInputEvents()
 					case ( SDLK_w ):
 					{
 						vec3 scaled;
-						glm_vec3_scale( cam.front, cam.speed * time.delta, scaled );
+						glm_vec3_scale( cam.front, cam.speed * game_time.delta, scaled );
 						glm_vec3_add( cam.position, scaled, cam.position );
 						break;
 					}
 					case ( SDLK_s ):
 					{
 						vec3 scaled;
-						glm_vec3_scale( cam.front, cam.speed * time.delta, scaled );
+						glm_vec3_scale( cam.front, cam.speed * game_time.delta, scaled );
 						glm_vec3_sub( cam.position, scaled, cam.position );
 						break;
 					}
 					case ( SDLK_a ):
 					{
 						vec3 scaled;
-						glm_vec3_scale( cam.right, cam.speed * time.delta, scaled );
+						glm_vec3_scale( cam.right, cam.speed * game_time.delta, scaled );
 						glm_vec3_sub( cam.position, scaled, cam.position );
 						break;
 					}
 					case ( SDLK_d ):
 					{
 						vec3 scaled;
-						glm_vec3_scale( cam.right, cam.speed * time.delta, scaled );
+						glm_vec3_scale( cam.right, cam.speed * game_time.delta, scaled );
 						glm_vec3_add( cam.position, scaled, cam.position );
 						break;
 					}
@@ -264,127 +214,74 @@ int main( int argc, char* args[] )
 
 	OpenGl::enableDepth();
 
-	uint vertex_shader  = OpenGl::createVertexShader( "shader.vert" );
-	uint fragment_shader = OpenGl::createFragmentShader( "shader.frag" );	
-	uint shaders[2];
+	uint vertex_shader  = Shader::createVertexShader( "shader.vert" );
+	uint fragment_shader = Shader::createFragmentShader( "shader.frag" );	
+	uint shaders[2];	
 	shaders[0] = vertex_shader;
 	shaders[1] = fragment_shader;
-	uint shader_program = OpenGl::createShaderProgram( shaders, 2 );
-		
-	uint VAO = OpenGl::createVertexArrayObject();
-	OpenGl::bindVertexArrayObject( VAO );
-	uint VBO = OpenGl::createBuffer();
-	OpenGl::bindVertexBufferObject( VBO );
-	uint EBO = OpenGl::createBuffer();
-	OpenGl::bindElementBufferObject( EBO );
+	uint shader_program = Shader::createShaderProgram( shaders, 2 );
 
-	OpenGl::fillVertexBufferObject( VAO, VBO, sizeof( float ) * 180, vertex, GL_STATIC_DRAW );
-	//OpenGl::fillElementBufferObject( VAO, VBO, sizeof( uint ) * 6, indces, GL_STATIC_DRAW );
-	
-	OpenGl::defineAttribFormat( 0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof( float ), 0 );
-	OpenGl::defineAttribFormat( 1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof( float ), ( const void* ) ( 3 * sizeof( float ) ) );
-	//OpenGl::defineAttribFormat( 0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof( float ), 0 );
+	Model nanosuit = Model( "nanosuit/nanosuit.obj" );
 
-	int width1, height1;
-	int width2, height2;
-	float border_color[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-
-	uint texture1 = window.createGlTexture( "container.jpg", &width1, &height1, 3 );
-	glTexParameteri(  GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
-	glTexParameteri(  GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
-	glTexParameterfv( GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border_color );
-	glTexParameteri(  GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST );
-	glTexParameteri(  GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-
-	uint texture2 = window.createGlTexture( "awesomeface.png", &width2, &height2, 4 );
-	glTexParameteri(  GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
-	glTexParameteri(  GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
-	glTexParameterfv( GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border_color );
-	glTexParameteri(  GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST );
-	glTexParameteri(  GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-
-	OpenGl::bind2DTextureToUnit( GL_TEXTURE0, texture1 );
-	OpenGl::bind2DTextureToUnit( GL_TEXTURE1, texture2 );
-///////////////////////////////////////////////////////////////////////////////////////////////////
 	mat4 view = GLM_MAT4_IDENTITY_INIT;
 	mat4 projection = GLM_MAT4_IDENTITY_INIT;
 
-	vec3 cube_positions[] = {
-		{ 0.0f, 0.0f, 0.0f },
-		{ 2.0f, 5.0f, -15.0f },
-		{ -1.5f, -2.2f, -2.5f },
-		{ -3.8f, -2.0f, -12.3f },
-		{ 2.4f, -0.4f, -3.5f },
-		{ -1.7f, 3.0f, -7.5f },
-		{ 1.3f, -2.0f, -2.5f },
-		{ 1.5f, 2.0f, -2.5f },
-		{ 1.5f, 0.2f, -1.5f },
-		{ -1.3f, 1.0f, -1.5f }
-	};
-
-
-	v3all( cam.world_up, 0.0f, 1.0f, 0.0f );
-	v3all( cam.position, 0.0f, 0.0f, 3.0f );
-	v3all( cam.front, 0.0f, 0.0f, -1.0f );
+	v3( cam.world_up, 0.0f, 1.0f, 0.0f );
+	v3( cam.position, 0.0f, 0.0f, 3.0f );
+	v3( cam.front, 0.0f, 0.0f, -1.0f );
     glm_vec3_cross( cam.front, cam.world_up, cam.right );
     glm_vec3_normalize( cam.right );
     glm_vec3_cross( cam.right, cam.front, cam.up );
     glm_vec3_normalize( cam.up );
 	cam.x_rot = 0.0f;
 	cam.y_rot = -90.0f;
-	cam.speed = 2.5f;
+	cam.speed = 1.5f;
 
 	mouse.x = -1;
 	mouse.y = -1;
 	mouse.sensitivity = 0.05f;
 
 	glm_perspective( glm_rad( 45.0f ), window.width / window.height, 0.1f, 100.0f, projection );
-///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	while ( running )
 	{
-		time.current = window.getMillisecondsAge() / 1000;
-		time.delta = time.current - time.last;
-		time.last = time.current;
+		game_time.current = window.getMillisecondsAge() / 1000;
+		game_time.delta = game_time.current - game_time.last;
+		game_time.last = game_time.current;
 
 		handleInputEvents();
 
-		vec4 clear_color = { 0.2f, 0.3f, 0.3f, 1.0f };
+		vec4 clear_color = { 0.05f, 0.05f, 0.05f, 1.0f };
 		OpenGl::clearBuffers( clear_color, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-		OpenGl::installShaderProgram( shader_program );
+		Shader::installProgram( shader_program );
 
-		OpenGl::initUniformMatrix4( shader_program, "view", GL_FALSE, view[0] );
-		OpenGl::initUniformMatrix4( shader_program, "projection", GL_FALSE, projection[0] );
-		OpenGl::initUniformTexture( shader_program, "text1", 0 );
-		OpenGl::initUniformTexture( shader_program, "text2", 1 );
-
-		OpenGl::bindVertexArrayObject( VAO );
+		Shader::initUniformMatrix4( shader_program, "view", GL_FALSE, *view );
+		Shader::initUniformMatrix4( shader_program, "projection", GL_FALSE, *projection );
 
 		vec3 cam_target;
 		glm_vec3_add( cam.position, cam.front, cam_target );
 		glm_lookat( cam.position, cam_target, cam.up, view );
 
-		for( unsigned int i = 0; i < 10; i++ )
-		{
-			mat4 model = GLM_MAT4_IDENTITY_INIT;
-			glm_translate( model, cube_positions[i] );
+		mat4 model = GLM_MAT4_IDENTITY_INIT;
+		vec3 position = { 0.0f, -1.75f, 0.0f };
+		vec3 scale_ratio = { 0.2f, 0.2f, 0.2f };
+		glm_translate( model, position );
+		glm_scale( model, scale_ratio );
 
-			OpenGl::initUniformMatrix4( shader_program, "model", GL_FALSE, model[0] );
+		Shader::initUniformMatrix4( shader_program, "model", GL_FALSE, *model );
 
-			OpenGl::activatePolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-			OpenGl::drawArrays( GL_TRIANGLES, 36 );
-		}
+		OpenGl::activatePolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+		nanosuit.draw( shader_program );
 
 		OpenGl::bindVertexArrayObject( 0 );
 
 		window.updateWindow();
 	}
 
-
-	OpenGl::deleteShaderProgram( shader_program );
-	OpenGl::deleteShader( vertex_shader );
-	OpenGl::deleteShader( fragment_shader );
+	Shader::deleteProgram( shader_program );
+	Shader::deleteShader( vertex_shader );
+	Shader::deleteShader( fragment_shader );
 	window.deleteWindow();
 
 	return 0;

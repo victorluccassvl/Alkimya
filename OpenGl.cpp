@@ -1,7 +1,5 @@
-#include "macros.cpp"
-#include "configuration.cpp"
-
-class OpenGl {
+class OpenGl
+{
 
 	public:
 
@@ -23,6 +21,7 @@ class OpenGl {
 		static void  defineAttribFormat( uint location, uint components, GLenum type, GLboolean normalize, uint stride, const void *start );
 		static void  activatePolygonMode( GLenum face, GLenum mode );
 		static void  drawArrays( GLenum mode, uint count );
+		static void  drawElements( GLenum mode, uint count );
 };
 
 
@@ -153,4 +152,10 @@ void OpenGl::activatePolygonMode( GLenum face, GLenum mode )
 void OpenGl::drawArrays( GLenum mode, uint count )
 {
 	glDrawArrays( mode, 0, count );
+}
+
+
+void OpenGl::drawElements( GLenum mode, uint count )
+{
+	glDrawElements( mode, count, GL_UNSIGNED_INT, 0 );
 }

@@ -1,7 +1,5 @@
-#include "macros.cpp"
-#include "configuration.cpp"
-
-class Shader {
+class Shader
+{
 
 	public:
 

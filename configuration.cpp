@@ -1,10 +1,3 @@
-#ifndef CONFIGURATION
-#define CONFIGURATION
-
-#include <SDL2/SDL_image.h>
-#include <cglm/cglm.h>
-#include "glad.c"
-
 // SDLGlWindow class
 const int _GL_MAJOR_VERSION = 3;
 const int _GL_MINOR_VERSION = 3;
@@ -23,5 +16,6 @@ const Uint32 _SDL_WINDOW_FLAGS = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WIND
 const int _GL_MAX_SHADER_COMPILATION_LOG_SIZE = 512;
 const int _GL_MAX_SHADER_PROGRAM_COMPILATION_LOG_SIZE = 512;
 
-
-#endif
+// Model, Mesh and Vertex classes
+const int _MODEL_MAX_MESHES = 1000;
+const int _MODEL_MAX_PATH_SIZE = 1000;

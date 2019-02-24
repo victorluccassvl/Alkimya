@@ -2,13 +2,58 @@
 
 out vec4 frag_color;
 
-in vec2 cords;
+in vec2 texture_coords;
 
-uniform sampler2D text1;
-uniform sampler2D text2;
+uniform sampler2D material_texture_diffuse1;
+uniform sampler2D material_texture_diffuse2;
+uniform sampler2D material_texture_diffuse3;
+uniform sampler2D material_texture_diffuse4;
+uniform sampler2D material_texture_diffuse5;
+uniform sampler2D material_texture_diffuse6;
+uniform sampler2D material_texture_diffuse7;
+uniform sampler2D material_texture_diffuse8;
+uniform sampler2D material_texture_diffuse9;
+uniform sampler2D material_texture_diffuse10;
+uniform sampler2D material_texture_diffuse11;
+uniform sampler2D material_texture_diffuse12;
+uniform sampler2D material_texture_diffuse13;
+uniform sampler2D material_texture_diffuse14;
+uniform sampler2D material_texture_diffuse15;
+uniform sampler2D material_texture_diffuse16;
+uniform sampler2D material_texture_diffuse17;
+uniform sampler2D material_texture_diffuse18;
+uniform sampler2D material_texture_diffuse19;
+uniform sampler2D material_texture_diffuse20;
+uniform sampler2D material_texture_diffuse21;
+uniform sampler2D material_texture_diffuse22;
+uniform sampler2D material_texture_diffuse23;
+uniform sampler2D material_texture_diffuse24;
+uniform sampler2D material_texture_specular1;
+uniform sampler2D material_texture_specular2;
+uniform sampler2D material_texture_specular3;
+uniform sampler2D material_texture_specular4;
+uniform sampler2D material_texture_specular5;
+uniform sampler2D material_texture_specular6;
+uniform sampler2D material_texture_specular7;
+uniform sampler2D material_texture_specular8;
+uniform sampler2D material_texture_specular9;
+uniform sampler2D material_texture_specular10;
+uniform sampler2D material_texture_specular11;
+uniform sampler2D material_texture_specular12;
+uniform sampler2D material_texture_specular13;
+uniform sampler2D material_texture_specular14;
+uniform sampler2D material_texture_specular15;
+uniform sampler2D material_texture_specular16;
+uniform sampler2D material_texture_specular17;
+uniform sampler2D material_texture_specular18;
+uniform sampler2D material_texture_specular19;
+uniform sampler2D material_texture_specular20;
+uniform sampler2D material_texture_specular21;
+uniform sampler2D material_texture_specular22;
+uniform sampler2D material_texture_specular23;
+uniform sampler2D material_texture_specular24;
 
 void main()
 {
-	vec2 cords2 = vec2( 1 - cords.x, cords.y );
-	frag_color = mix( texture( text1, cords ), texture( text2, cords2 ), 0.2f );
+	frag_color = texture( material_texture_diffuse1, texture_coords );
 }
