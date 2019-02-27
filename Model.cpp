@@ -1,147 +1,12 @@
-enum TextureType
-{
-	SPECULAR, DIFFUSE
-};
-
-class Texture
-{
-	public:
-		TextureType type;
-		uint id;
-		int width;
-		int height;
-		char path[_MODEL_MAX_PATH_SIZE];
-};
-
-
-class Vertex
-{
-	public:
-		vec3 position;
-		vec3 normal;
-		vec2 texture_coords;
-
-    	Vertex( vec3 position, vec3 normal, vec3 texture_coords );
-};
-
-Vertex::Vertex( vec3 position, vec3 normal, vec3 texture_coords )
-{
-	v3( this->position,             position[0],       position[1],  position[2] );
-	v3( this->normal,                 normal[0],         normal[1],    normal[2] );
-	v2( this->texture_coords, texture_coords[0], texture_coords[1] );
-}
-
-
-class Mesh
-{
-	public:
-	uint VAO, VBO, EBO;
-	uint vertices, indices, textures;
-	Vertex  *vertex;
-	uint 	*indice;
-	Texture *texture;
-
-	Mesh( Vertex *vertex, uint vertices, uint *indice, uint indices, Texture *texture, uint textures );
-
-	void draw( uint shader );
-	void setup();
-};
-
-Mesh::Mesh( Vertex *vertex, uint vertices, uint *indice, uint indices, Texture *texture, uint textures )
-{
-	this->vertices = vertices;
-	this->indices  = indices;
-	this->textures = textures;
-	this->vertex   = vertex;
-	this->indice   = indice;
-	this->texture  = texture;
-
-	this->setup();
-}
-
-void Mesh::draw( uint shader )
-{
-	char texture_variable[100] = { "material_texture_\0" };
-	char number[100];
-
-	for( uint i = 0 ; i < this->textures ; i++ )
-	{
-		uint diffuse_textures  = 0;
-		uint specular_textures = 0;
-
-		switch( this->texture[i].type )
-		{
-			case DIFFUSE:
-			{
-				diffuse_textures++;
-				strcat( texture_variable, "diffuse\0" );
-				sprintf( number, "%d", diffuse_textures );
-				strcat( texture_variable, number );
-				break;
-			}
-			case SPECULAR:
-			{
-				specular_textures++;
-				strcat( texture_variable, "specular\0" );
-				sprintf( number, "%d", specular_textures );
-				strcat( texture_variable, number );
-				break;
-			}
-			default:
-			{
-				printf( "While drawing mesh, unnexpected texture type.\n" );
-				STOP;
-			}
-		}
-
-		Shader::initUniformTexture( shader, texture_variable, i );
-
-		OpenGl::bind2DTextureToUnit( GL_TEXTURE0 + i, this->texture[i].id );
-	}
-
-	OpenGl::bindVertexArrayObject( this->VAO );
-
-	OpenGl::drawElements( GL_TRIANGLES, this->indices );
-
-	OpenGl::bindVertexArrayObject( 0 );
-}
-
-void Mesh::setup()
-{
-
-	this->VAO = OpenGl::createVertexArrayObject();
-	this->VBO = OpenGl::createBuffer();
-	this->EBO = OpenGl::createBuffer();
-
-	OpenGl::bindVertexArrayObject( this->VAO );
-
-	OpenGl::bindVertexBufferObject( this->VBO );
-	OpenGl::fillVertexBufferObject( this->VAO, this->VBO, this->vertices * sizeof( Vertex ), &this->vertex[0], GL_STATIC_DRAW );
-
-	OpenGl::bindElementBufferObject( this->EBO );
-
-	OpenGl::fillElementBufferObject( this->VAO, this->VBO, this->indices * sizeof( uint ), &this->indice[0], GL_STATIC_DRAW );
-
-	// position
-	OpenGl::defineAttribFormat( 0, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex ), ( void* ) 0 );
-
-	// normal
-	OpenGl::defineAttribFormat( 1, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex ), ( void* ) offsetof( Vertex, normal ) );
-
-	//texture coords
-	OpenGl::defineAttribFormat( 2, 3, GL_FLOAT, GL_FALSE, sizeof( Vertex ), ( void* ) offsetof( Vertex, texture_coords ) );
-
-	OpenGl::bindVertexArrayObject( 0 );
-    	printf( "a%d\n", glGetError() );
-}
-
-
 class Model
 {
 	public:
 		Mesh *mesh;
 		int meshes;
 		char root_directory[_MODEL_MAX_PATH_SIZE];
+		Texture **loaded_texture;
+		int loaded_textures;
+		int max_textures;
 
 		Model( const char *path );
 
@@ -154,6 +19,11 @@ class Model
 
 Model::Model( const char *path )
 {
+	this->mesh = NULL;
+	this->meshes = 0;
+	this->loaded_texture = ( Texture** ) malloc( sizeof( Texture* ) * _MODEL_INITIAL_MAX_TEXTURES );
+	this->loaded_textures = 0;
+	this->max_textures = _MODEL_INITIAL_MAX_TEXTURES;
 	this->load( path );
 }
 
@@ -255,6 +125,21 @@ Mesh Model::processAssimpMesh( aiMesh *mesh, const aiScene *scene )
 		int total_textures = material->GetTextureCount( aiTextureType_DIFFUSE );
 		total_textures += material->GetTextureCount( aiTextureType_SPECULAR );
 
+		if ( total_textures + this->loaded_textures > this->max_textures )
+		{
+			this->max_textures = total_textures + this->loaded_textures;
+
+			Texture **new_max = ( Texture** ) malloc( sizeof( Texture* ) * this->max_textures );
+			for( int j = 0 ; j < this->loaded_textures ; j++ )
+			{
+				new_max[j] = this->loaded_texture[j];
+			}
+
+			free( this->loaded_texture );
+
+			this->loaded_texture = new_max;
+		}
+
 		texture = ( Texture* ) malloc( sizeof( Texture ) * total_textures );
 
 		this->loadMaterialTextures( material, aiTextureType_DIFFUSE, DIFFUSE, texture, &textures );
@@ -276,11 +161,27 @@ void Model::loadMaterialTextures( aiMaterial *material, aiTextureType assimp_typ
         strcpy( new_texture.path, this->root_directory );
         // Initialize texture Path
         strcat( new_texture.path, relative_path.C_Str() );
-        // Initialize texture ID, Width and Height
-        new_texture.id = SDLGlWindow::createGlTexture( new_texture.path, &new_texture.width, &new_texture.height );
-        // Initialize texture Type
-        new_texture.type = type;
 
-        texture[( *textures )++] = new_texture;
+        bool already_loaded = false;
+
+        for( int j = 0 ; j < this->loaded_textures && !already_loaded ; j++ )
+        {
+        	if ( strcmp( this->loaded_texture[j]->path, new_texture.path ) == 0 )
+        	{
+        		already_loaded = true;
+        		texture[( *textures )++] = *( this->loaded_texture[j] );
+        	}
+        }
+
+        if ( !already_loaded )
+        {
+	        // Initialize texture ID, Width and Height
+	        new_texture.id = SDLGlWindow::createGlTexture( new_texture.path, &new_texture.width, &new_texture.height );
+	        // Initialize texture Type
+	        new_texture.type = type;
+
+	        this->loaded_texture[this->loaded_textures++] = &texture[( *textures )];
+	        texture[( *textures )++] = new_texture;
+        }
     }
 }

@@ -1,3 +1,4 @@
+// Third part libraries and standards__________________________________________________________________________________
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -9,48 +10,38 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_image.h>
-
 #include "glad.c"
+
+
+// Own autorship libraries_____________________________________________________________________________________________
 #include "configuration.cpp"
 #include "macros.cpp"
 #include "CGLM.cpp"
 #include "OpenGl.cpp"
 #include "Shader.cpp"
 #include "SDLGlWindow.cpp"
+#include "Texture.cpp"
+#include "Vertex.cpp"
+#include "Mesh.cpp"
 #include "Model.cpp"
+#include "Camera.cpp"
+#include "Time.cpp"
 
-typedef struct {
-	vec3 position;
-	vec3 front;
-	vec3 right;
-	vec3 up;
-	vec3 world_up;
-	float x_rot;
-	float y_rot;
-	float speed;
-} Camera;
 
+// TODO: Remove this, data should not be declared here
 typedef struct {
 	float x;
 	float y;
 	float sensitivity;
 } Mouse;
 
-typedef struct {
-	float delta;
-	float last;
-	float current;
-} Time;
-
-
+// TODO: Remove all global variables if possible
 SDLGlWindow window;
-Camera cam;
 Mouse mouse;
-Time game_time;
 bool running = true;
 
-
-void handleInputEvents()
+// TODO: This should be part of gamestate class, NYI
+void handleInputEvents( Camera *cam, Time *game_time )
 {
 	SDL_Event event;
 
@@ -93,29 +84,29 @@ void handleInputEvents()
 					case ( SDLK_w ):
 					{
 						vec3 scaled;
-						glm_vec3_scale( cam.front, cam.speed * game_time.delta, scaled );
-						glm_vec3_add( cam.position, scaled, cam.position );
+						glm_vec3_scale( cam->front, cam->speed * game_time->delta, scaled );
+						glm_vec3_add( cam->position, scaled, cam->position );
 						break;
 					}
 					case ( SDLK_s ):
 					{
 						vec3 scaled;
-						glm_vec3_scale( cam.front, cam.speed * game_time.delta, scaled );
-						glm_vec3_sub( cam.position, scaled, cam.position );
+						glm_vec3_scale( cam->front, cam->speed * game_time->delta, scaled );
+						glm_vec3_sub( cam->position, scaled, cam->position );
 						break;
 					}
 					case ( SDLK_a ):
 					{
 						vec3 scaled;
-						glm_vec3_scale( cam.right, cam.speed * game_time.delta, scaled );
-						glm_vec3_sub( cam.position, scaled, cam.position );
+						glm_vec3_scale( cam->right, cam->speed * game_time->delta, scaled );
+						glm_vec3_sub( cam->position, scaled, cam->position );
 						break;
 					}
 					case ( SDLK_d ):
 					{
 						vec3 scaled;
-						glm_vec3_scale( cam.right, cam.speed * game_time.delta, scaled );
-						glm_vec3_add( cam.position, scaled, cam.position );
+						glm_vec3_scale( cam->right, cam->speed * game_time->delta, scaled );
+						glm_vec3_add( cam->position, scaled, cam->position );
 						break;
 					}
 				}
@@ -144,30 +135,30 @@ void handleInputEvents()
 						mouse.y = event.motion.y;
 					}
 
-				    float x_offset = ( event.motion.x - mouse.x ) * cam.speed;
-				    float y_offset = ( event.motion.y - mouse.y ) * cam.speed * ( -1 );
+				    float x_offset = ( event.motion.x - mouse.x ) * cam->speed;
+				    float y_offset = ( event.motion.y - mouse.y ) * cam->speed * ( -1 );
 
-				    cam.y_rot += x_offset;
-				    cam.x_rot += y_offset;
+				    cam->y_rotation += x_offset;
+				    cam->x_rotation += y_offset;
 
-				    if( cam.x_rot > 89.0f )
+				    if( cam->x_rotation > 89.0f )
 				    {
-				        cam.x_rot = 89.0f;
+				        cam->x_rotation = 89.0f;
 				    }
-				    if( cam.x_rot < -89.0f )
+				    if( cam->x_rotation < -89.0f )
 				    {
-				        cam.x_rot = -89.0f;
+				        cam->x_rotation = -89.0f;
 				    }
 
-				    cam.front[0] = cos( glm_rad( cam.x_rot ) ) * cos( glm_rad( cam.y_rot ) );
-				    cam.front[1] = sin( glm_rad( cam.x_rot ) );
-				    cam.front[2] = cos( glm_rad( cam.x_rot ) ) * sin( glm_rad( cam.y_rot ) );
+				    cam->front[0] = cos( glm_rad( cam->x_rotation ) ) * cos( glm_rad( cam->y_rotation ) );
+				    cam->front[1] = sin( glm_rad( cam->x_rotation ) );
+				    cam->front[2] = cos( glm_rad( cam->x_rotation ) ) * sin( glm_rad( cam->y_rotation ) );
 
-				    glm_vec3_normalize( cam.front );
-				    glm_vec3_cross( cam.front, cam.world_up, cam.right );
-				    glm_vec3_normalize( cam.right );
-				    glm_vec3_cross( cam.right, cam.front, cam.up );
-				    glm_vec3_normalize( cam.up );
+				    glm_vec3_normalize( cam->front );
+				    glm_vec3_cross( cam->front, cam->world_up, cam->right );
+				    glm_vec3_normalize( cam->right );
+				    glm_vec3_cross( cam->right, cam->front, cam->up );
+				    glm_vec3_normalize( cam->up );
 				}
 
 				mouse.x = event.motion.x;
@@ -205,6 +196,7 @@ void handleInputEvents()
 	}
 }
 
+// Main Function_______________________________________________________________________________________________________
 int main( int argc, char* args[] )
 {
 	window.initializeWindow();
@@ -223,53 +215,41 @@ int main( int argc, char* args[] )
 
 	Model nanosuit = Model( "nanosuit/nanosuit.obj" );
 
-	mat4 view = GLM_MAT4_IDENTITY_INIT;
-	mat4 projection = GLM_MAT4_IDENTITY_INIT;
+	vec3 position = { 0.0f, 0.0f, 3.0f  };
+	vec3 front    = { 0.0f, 0.0f, -1.0f };
+	vec3 up       = { 0.0f, 1.0f, 0.0f  };
 
-	v3( cam.world_up, 0.0f, 1.0f, 0.0f );
-	v3( cam.position, 0.0f, 0.0f, 3.0f );
-	v3( cam.front, 0.0f, 0.0f, -1.0f );
-    glm_vec3_cross( cam.front, cam.world_up, cam.right );
-    glm_vec3_normalize( cam.right );
-    glm_vec3_cross( cam.right, cam.front, cam.up );
-    glm_vec3_normalize( cam.up );
-	cam.x_rot = 0.0f;
-	cam.y_rot = -90.0f;
-	cam.speed = 1.5f;
+	Camera cam( position, front, up, 1.5f, &window.width, &window.height );
 
+	// TODO: Polish this
 	mouse.x = -1;
 	mouse.y = -1;
 	mouse.sensitivity = 0.05f;
 
-	glm_perspective( glm_rad( 45.0f ), window.width / window.height, 0.1f, 100.0f, projection );
+	cam.initProjection();
+
+	Time game_time( &window );
 
 	while ( running )
 	{
-		game_time.current = window.getMillisecondsAge() / 1000;
-		game_time.delta = game_time.current - game_time.last;
-		game_time.last = game_time.current;
-
-		handleInputEvents();
+		game_time.update();
 
 		vec4 clear_color = { 0.05f, 0.05f, 0.05f, 1.0f };
 		OpenGl::clearBuffers( clear_color, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
+		handleInputEvents( &cam, &game_time );
+
 		Shader::installProgram( shader_program );
 
-		Shader::initUniformMatrix4( shader_program, "view", GL_FALSE, *view );
-		Shader::initUniformMatrix4( shader_program, "projection", GL_FALSE, *projection );
+		cam.initView();
+		vec3 model_position = { 0.0f, -1.75f, 0.0f };
+		vec3 model_scale    = { 0.2f, 0.2f, 0.2f   };	
+		vec3 rotate_axis    = { 0.0f, 0.0f, 1.0f   };
+		cam.initModel( model_position, model_scale, rotate_axis, 180.0f );
 
-		vec3 cam_target;
-		glm_vec3_add( cam.position, cam.front, cam_target );
-		glm_lookat( cam.position, cam_target, cam.up, view );
-
-		mat4 model = GLM_MAT4_IDENTITY_INIT;
-		vec3 position = { 0.0f, -1.75f, 0.0f };
-		vec3 scale_ratio = { 0.2f, 0.2f, 0.2f };
-		glm_translate( model, position );
-		glm_scale( model, scale_ratio );
-
-		Shader::initUniformMatrix4( shader_program, "model", GL_FALSE, *model );
+		Shader::initUniformMatrix4( shader_program, "view",       GL_FALSE, *( cam.view       ) );
+		Shader::initUniformMatrix4( shader_program, "projection", GL_FALSE, *( cam.projection ) );
+		Shader::initUniformMatrix4( shader_program, "model",      GL_FALSE, *( cam.model      ) );
 
 		OpenGl::activatePolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 		nanosuit.draw( shader_program );
