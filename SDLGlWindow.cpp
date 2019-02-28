@@ -1,3 +1,4 @@
+// Related Data Structure______________________________________________________________________________________________
 struct SDL_State
 {
 	const Uint8 *keyboard;
@@ -6,50 +7,52 @@ struct SDL_State
 	int y;
 };
 
+
+// Class_______________________________________________________________________________________________________________
 class SDLGlWindow
 {
-
-	// TODO: verificar que métodos e campos podem/devem ser mudados para stático
 	public:
-		SDL_Window *window;
-		SDL_GLContext context;
-		SDL_State state;
-		SDL_Event *event;
-		bool context_exists;
-		static bool image_initialized;
-		static bool audio_initialized;
+	SDL_Window *window;
+	SDL_GLContext context;
+	SDL_State state;
+	SDL_Event *event;
+	bool context_exists;
+	static bool image_initialized;
+	static bool audio_initialized;
 
-		char title[_SDL_WINDOW_MAX_TITLE_NAME];
-		int x_pos;
-		int y_pos;
-		int width;
-		int height;
+	char title[_SDL_WINDOW_MAX_TITLE_NAME];
+	int x_pos;
+	int y_pos;
+	int width;
+	int height;
 
-		SDLGlWindow();
+	SDLGlWindow();
 
-		void  deleteWindow();
+	void  deleteWindow();
 
-		void  initializeWindow();
-		void  initializeGlContext();
+	void  initializeWindow();
+	void  initializeGlContext();
 
-		static void initializeImage();
-		static void initializeAudio();
+	static void initializeImage();
+	static void initializeAudio();
 
-		static uint createGlTexture( const char *texture_source, int *width, int *height );
+	static uint createGlTexture( const char *texture_source, int *width, int *height );
 
-		void  soundFunctions();
+	static void soundFunctions();
 
-		float getMillisecondsAge();
+	static float getMillisecondsAge();
 
-		void  updateWindow();
+	void  updateWindow();
 
-		bool  getEvent();
-		void  getState();
+	bool  getEvent();
+	void  getState();
 };
 
 bool SDLGlWindow::image_initialized = false;
 bool SDLGlWindow::audio_initialized = false;
 
+
+// Constructors________________________________________________________________________________________________________
 SDLGlWindow::SDLGlWindow()
 {
 	this->window = NULL;
@@ -63,6 +66,7 @@ SDLGlWindow::SDLGlWindow()
 }
 
 
+// Methods_____________________________________________________________________________________________________________
 void SDLGlWindow::deleteWindow()
 {
 	if ( this->context_exists )
@@ -85,7 +89,6 @@ void SDLGlWindow::deleteWindow()
 	SDL_Quit();
 }
 
-
 void SDLGlWindow::initializeWindow()
 {
 	if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO ) == FAILED )
@@ -106,7 +109,6 @@ void SDLGlWindow::initializeWindow()
 		STOP;
 	}
 }
-
 
 void SDLGlWindow::initializeGlContext()
 {
@@ -135,7 +137,6 @@ void SDLGlWindow::initializeGlContext()
 	this->context_exists = true;
 }
 
-
 void SDLGlWindow::initializeImage()
 {
 	if ( ( IMG_Init( _SDL_IMG_FLAGS ) & _SDL_IMG_FLAGS ) != _SDL_IMG_FLAGS )
@@ -146,7 +147,6 @@ void SDLGlWindow::initializeImage()
 
 	SDLGlWindow::image_initialized = true;
 }
-
 
 void SDLGlWindow::initializeAudio()
 {
@@ -159,16 +159,17 @@ void SDLGlWindow::initializeAudio()
 	SDLGlWindow::audio_initialized = true;
 }
 
-
 uint SDLGlWindow::createGlTexture( const char *texture_source, int *width, int *height )
 {
 
+	// Verify if image loader is up
 	if ( ! SDLGlWindow::image_initialized )
 	{
 		printf( "SDL image not initialized, it can't create texture %s\n", texture_source );
 		STOP;
 	}
 
+	// Try to load the texture image
 	SDL_Surface *image = IMG_Load( texture_source );
 	uint new_texture;
 
@@ -178,6 +179,7 @@ uint SDLGlWindow::createGlTexture( const char *texture_source, int *width, int *
 		STOP;
 	}
 
+	// Verify if it has a valid type
 	uint channels = image->format->BytesPerPixel;
  
 	bool valid_data = channels == 3 || channels == 4;
@@ -187,6 +189,7 @@ uint SDLGlWindow::createGlTexture( const char *texture_source, int *width, int *
 		STOP;
 	}
 
+	// Create the texture
 	*width = image->w;
 	*height = image->h;
 
@@ -214,7 +217,6 @@ uint SDLGlWindow::createGlTexture( const char *texture_source, int *width, int *
 	return new_texture;
 }
 
-
 void SDLGlWindow::soundFunctions()
 {
 	Mix_Chunk *short_sound = Mix_LoadWAV( "soundpath" );
@@ -231,12 +233,10 @@ void SDLGlWindow::soundFunctions()
 	Mix_FreeMusic( long_sound );
 }
 
-
 float SDLGlWindow::getMillisecondsAge()
 {
 	return ( float ) SDL_GetTicks();
 }
-
 
 void SDLGlWindow::updateWindow()
 {
@@ -247,7 +247,6 @@ void SDLGlWindow::updateWindow()
 	}
 	SDL_GL_SwapWindow( this->window );
 }
-
 
 bool SDLGlWindow::getEvent()
 {
@@ -260,7 +259,6 @@ bool SDLGlWindow::getEvent()
 		return true;
 	}
 }
-
 
 void SDLGlWindow::getState()
 {
