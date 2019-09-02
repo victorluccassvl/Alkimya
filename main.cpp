@@ -196,6 +196,52 @@ void handleInputEvents( Camera *cam, Time *game_time )
 	}
 }
 
+
+float vertices[] = {
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+    -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
+
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+
+     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+
+    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+     0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+};
+
+
 // Main Function_______________________________________________________________________________________________________
 int main( int argc, char* args[] )
 {
@@ -206,14 +252,32 @@ int main( int argc, char* args[] )
 
 	OpenGl::enableDepth();
 
-	uint vertex_shader  = Shader::createVertexShader( "shader.vert" );
-	uint fragment_shader = Shader::createFragmentShader( "shader.frag" );	
+	uint vert_shader        = Shader::createVertexShader  ( "shader.vert" );
+	uint frag_object_shader = Shader::createFragmentShader( "object_shader.frag" );
+	uint frag_light_shader  = Shader::createFragmentShader( "light_shader.frag" );	
 	uint shaders[2];	
-	shaders[0] = vertex_shader;
-	shaders[1] = fragment_shader;
-	uint shader_program = Shader::createShaderProgram( shaders, 2 );
+	shaders[0] = vert_shader;
+	uint prog_object_shader, prog_light_shader;
+	shaders[1] = frag_object_shader;
+	prog_object_shader = Shader::createShaderProgram( shaders, 2 );
+	shaders[1] = frag_light_shader;
+	prog_light_shader  = Shader::createShaderProgram( shaders, 2 );;
 
-	Model nanosuit = Model( "nanosuit/nanosuit.obj" );
+	uint box_VAO = OpenGl::createVertexArrayObject();
+	uint box_VBO = OpenGl::createBuffer();
+	OpenGl::fillVertexBufferObject( box_VAO, box_VBO, sizeof( float ) * 36 * 6, vertices, GL_STATIC_DRAW );
+	OpenGl::defineAttribFormat( 0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof( float ), ( void* ) 0 );
+	OpenGl::defineAttribFormat( 1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof( float ), ( void* ) ( 3 * sizeof( float ) ) );
+	vec3 box_pos = { 0.0f, 0.0f, 0.0f };
+
+	uint light_VAO = OpenGl::createVertexArrayObject();
+	uint light_VBO = OpenGl::createBuffer();
+	OpenGl::fillVertexBufferObject( light_VAO, light_VBO, sizeof( float ) * 36 * 6, vertices, GL_STATIC_DRAW );
+	OpenGl::defineAttribFormat( 0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof( float ), ( void* ) 0 );
+	OpenGl::defineAttribFormat( 1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof( float ), ( void* ) ( 3 * sizeof( float ) ) );
+	vec3 light_pos = { 1.2f, 1.0f, 2.0f };
+
+	//Model nanosuit = Model( "nanosuit/nanosuit.obj" );
 
 	vec3 position = { 0.0f, 0.0f, 3.0f  };
 	vec3 front    = { 0.0f, 0.0f, -1.0f };
@@ -234,34 +298,64 @@ int main( int argc, char* args[] )
 	{
 		game_time.update();
 
-		vec4 clear_color = { 0.05f, 0.05f, 0.05f, 1.0f };
+		vec4 clear_color = { 0.1f, 0.1f, 0.1f, 1.0f };
 		OpenGl::clearBuffers( clear_color, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
 		handleInputEvents( &cam, &game_time );
 
-		Shader::installProgram( shader_program );
-
+		Shader::installProgram( prog_object_shader );
 		cam.initView();
-		vec3 model_position = { 0.0f, -1.75f, 0.0f };
-		vec3 model_scale    = { 0.2f, 0.2f, 0.2f   };	
-		vec3 rotate_axis    = { 0.0f, 0.0f, 1.0f   };
-		cam.initModel( model_position, model_scale, rotate_axis, 180.0f );
+		vec3 box_scale       = { 1.0f, 1.0f, 1.0f };	
+		vec3 box_rotate_axis = { 0.0f, 0.0f, 1.0f };
+		cam.initModel( box_pos, box_scale, box_rotate_axis, 0.0f );
+		vec3 material_ambient  = { 1.0f, 0.5f, 0.31f };
+		vec3 material_diffuse  = { 1.0f, 0.5f, 0.31f };
+		vec3 material_specular = { 0.5f, 0.5f, 0.5f };
+		float material_shininess = 32.0f;
+		vec3 light_ambient  = { 0.2f, 0.2f, 0.2f };
+		vec3 light_diffuse  = { 0.5f, 0.5f, 0.5f };
+		vec3 light_specular = { 1.0f, 1.0f, 1.0f };
+		light_diffuse[0] = sin( game_time.current * 2.0f );
+		light_diffuse[1] = sin( game_time.current * 0.7f );
+		light_diffuse[2] = sin( game_time.current * 1.3f );
+		Shader::initUniformArrayf ( prog_object_shader, "material.ambient",    material_ambient,   3 );
+		Shader::initUniformArrayf ( prog_object_shader, "material.diffuse",    material_diffuse,   3 );
+		Shader::initUniformArrayf ( prog_object_shader, "material.specular",   material_specular,  3 );
+		Shader::initUniformArrayf ( prog_object_shader, "material.shininess", &material_shininess, 1 );
+		Shader::initUniformArrayf ( prog_object_shader, "light.ambient",       light_ambient,     3 );
+		Shader::initUniformArrayf ( prog_object_shader, "light.diffuse",       light_diffuse,     3 );
+		Shader::initUniformArrayf ( prog_object_shader, "light.specular",      light_specular,    3 );
+		Shader::initUniformArrayf ( prog_object_shader, "light.position",      light_pos,         3 );
+		Shader::initUniformArrayf ( prog_object_shader, "cam_position",        cam.position,      3 );
+		Shader::initUniformMatrix4( prog_object_shader, "view",       GL_FALSE, *( cam.view       ) );
+		Shader::initUniformMatrix4( prog_object_shader, "projection", GL_FALSE, *( cam.projection ) );
+		Shader::initUniformMatrix4( prog_object_shader, "model",      GL_FALSE, *( cam.model      ) );
+		OpenGl::bindVertexArrayObject( box_VAO );
+		OpenGl::drawArrays( GL_TRIANGLES, 36 );
 
-		Shader::initUniformMatrix4( shader_program, "view",       GL_FALSE, *( cam.view       ) );
-		Shader::initUniformMatrix4( shader_program, "projection", GL_FALSE, *( cam.projection ) );
-		Shader::initUniformMatrix4( shader_program, "model",      GL_FALSE, *( cam.model      ) );
+		Shader::installProgram( prog_light_shader );
+		cam.initView();
+		vec3 light_scale       = { 1.0f, 1.0f, 1.0f };	
+		vec3 light_rotate_axis = { 0.0f, 0.0f, 1.0f };
+		cam.initModel( light_pos, light_scale, light_rotate_axis, 0.0f );
+		Shader::initUniformMatrix4( prog_light_shader, "view",       GL_FALSE, *( cam.view       ) );
+		Shader::initUniformMatrix4( prog_light_shader, "projection", GL_FALSE, *( cam.projection ) );
+		Shader::initUniformMatrix4( prog_light_shader, "model",      GL_FALSE, *( cam.model      ) );
+		OpenGl::bindVertexArrayObject( light_VAO );
+		OpenGl::drawArrays( GL_TRIANGLES, 36 );
 
-		OpenGl::activatePolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-		nanosuit.draw( shader_program );
+		//nanosuit.draw( shader_program );
 
 		OpenGl::bindVertexArrayObject( 0 );
 
 		window.updateWindow();
 	}
 
-	Shader::deleteProgram( shader_program );
-	Shader::deleteShader( vertex_shader );
-	Shader::deleteShader( fragment_shader );
+	Shader::deleteProgram( prog_light_shader );
+	Shader::deleteProgram( prog_object_shader );
+	Shader::deleteShader( vert_shader );
+	Shader::deleteShader( frag_light_shader );
+	Shader::deleteShader( frag_object_shader );
 	window.deleteWindow();
 
 	return 0;

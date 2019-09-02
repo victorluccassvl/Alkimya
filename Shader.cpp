@@ -187,14 +187,34 @@ void Shader::initUniformArrayf( uint shader, const char *variable, float *array,
 {
 	uint location = glGetUniformLocation( shader, variable );
 
-	if ( array_size > 0 && array_size <= 4 )
+	switch ( array_size )
 	{
-		glUniform1fv( location, array_size, array );
-	}
-	else
-	{
-		printf( "Parametro inválido para inicialização de variável do shader\n" );
-		STOP;
+		case 1:
+		{
+			glUniform1fv( location, 1, array );
+			break;
+		}
+		case 2:
+		{
+			glUniform2fv( location, 1, array );
+			break;
+		}
+		case 3:
+		{
+			glUniform3fv( location, 1, array );
+			break;
+		}
+		case 4:
+		{
+			glUniform4fv( location, 1, array );
+			break;
+		}
+		default:
+		{
+			printf( "Parametro inválido para inicialização de variável do shader\n" );
+			STOP;
+			break;
+		}
 	}
 }
 
